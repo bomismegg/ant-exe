@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  # MongoDB Service
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  # Redis Service
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  # RabbitMQ Service
+  rabbitmq:
+    image: rabbitmq:management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"  # RabbitMQ main port
+      - "15672:15672"  # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - app-network
+
+  # Node.js Application
+  app:
+    image: bomisme/ant-backend:latest
+    container_name: ant-backend
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongodb
+      - redis
+      - rabbitmq
+    environment:
+      MONGO_URI: mongodb://mongodb:27017/ant2
+      PORT: 5000
+      JWT_SECRET: your-jwt-secret
+      JWT_EXPIRES_IN: 1d
+      JWT_REFRESH_SECRET: your-jwt-refresh-secret
+      JWT_REFRESH_EXPIRES_IN: 7d
+      GOOGLE_CLIENT_ID: your-client-id
+      GOOGLE_CLIENT_SECRET: your-client-secret
+      REDIS_URL: redis://redis:6379
+      EMAIL_HOST: smtp.gmail.com
+      EMAIL_PORT: 587
+      EMAIL_USERNAME: your-email@example.com
+      EMAIL_PASSWORD: your-email-password
+      EMAIL_SECURE: false
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      AWS_ACCESS_KEY_ID: your-aws-access-key-id
+      AWS_SECRET_ACCESS_KEY: your-aws-secret-access-key
+      AWS_REGION: your-aws-region
+      AWS_BUCKET_NAME: your-aws-bucket-name
+    volumes:
+      - .:/usr/src/app
+    networks:
+      - app-network
+
+# Volumes for persistent storage
+volumes:
+  mongo_data:
+
+# Networks
+networks:
+  app-network:
+    driver: bridge
